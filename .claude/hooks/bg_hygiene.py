@@ -62,7 +62,7 @@ def split_marked_sections(text: str) -> tuple[str, str, str] | None:
 def git_status_set(project_root: Path) -> set[str] | None:
     try:
         res = subprocess.run(
-            ["git", "-C", str(project_root), "status", "--porcelain"],
+            ["git", "-C", str(project_root), "status", "--porcelain", "-uall"],
             capture_output=True,
             text=True,
             timeout=2.0,
@@ -313,9 +313,13 @@ def run_global_hygiene(project_root: Path) -> str:
             for pdir in sorted(projects_dir.iterdir())[:10]:
                 meta = lh.read_json_safe(pdir / "project_meta.json", default={})
                 proot = meta.get("project_root")
-                if proot and (Path(proot) / "CLAUDE.md").exists():
-                    txt = (Path(proot) / "CLAUDE.md").read_text(encoding="utf-8")[:1500]
-                    summaries.append(f"## Project: {proot}\n{txt}")
+                if proot:
+                    candidate = Path(proot) / "CLAUDE.md"
+                    if not candidate.exists():
+                        candidate = Path(proot) / ".claude" / "CLAUDE.md"
+                    if candidate.exists():
+                        txt = candidate.read_text(encoding="utf-8")[:1500]
+                        summaries.append(f"## Project: {proot}\n{txt}")
 
         settings_path = claude_home / "hygiene" / "haiku-global-settings.json"
         rc, output_log = run_haiku_cli(

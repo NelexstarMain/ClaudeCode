@@ -26,6 +26,7 @@ STOP_RETRY_CAP = 1
 HAIKU_BUDGET_USD = 0.20
 PREFERENCES_MAX_LINES = 70
 HANDOFF_MAX_AGE_SECONDS = 24 * 3600
+BG_RETRY_COOLDOWN_SECONDS = 600
 
 IGNORED_PATH_PATTERNS = (
     "*.md",
@@ -33,21 +34,45 @@ IGNORED_PATH_PATTERNS = (
     "docs/**",
     "*.txt",
     ".gitignore",
+    ".gitattributes",
+    ".editorconfig",
     "LICENSE",
+    "*.png",
+    "*.jpg",
+    "*.jpeg",
+    "*.svg",
+    "*.ico",
 )
 
 TEST_COMMAND_PREFIXES = (
     ("dotnet", "test"),
     ("dotnet", "build"),
     ("npm", "test"),
+    ("npm", "run", "test"),
+    ("pnpm", "test"),
+    ("pnpm", "run", "test"),
+    ("yarn", "test"),
+    ("yarn", "run", "test"),
+    ("bun", "test"),
+    ("bun", "run", "test"),
     ("npx", "vitest"),
+    ("npx", "jest"),
     ("npx", "tsx", "--test"),
+    ("node", "--test"),
+    ("tsx", "--test"),
     ("pytest",),
     ("py.test",),
     ("python", "-m", "pytest"),
     ("python3", "-m", "pytest"),
+    ("uv", "run", "pytest"),
+    ("poetry", "run", "pytest"),
     ("python", "-m", "unittest"),
     ("python3", "-m", "unittest"),
+    ("make", "test"),
+    ("make", "check"),
+    ("cargo", "test"),
+    ("go", "test"),
+    ("ctest",),
 )
 
 
@@ -191,6 +216,12 @@ def read_jsonl_safe(path: Path) -> list[dict[str, Any]]:
     return items
 
 
+def load_project_hygiene_config(project_root: Path) -> dict[str, Any]:
+    cfg_path = project_root / ".claude" / "hygiene.json"
+    data = read_json_safe(cfg_path, default={})
+    return data if isinstance(data, dict) else {}
+
+
 def is_ignored_path(file_path: str, project_root: Path) -> bool:
     if not file_path:
         return True
@@ -203,7 +234,13 @@ def is_ignored_path(file_path: str, project_root: Path) -> bool:
     rel_lower = rel.lower()
     name_lower = Path(rel).name.lower()
 
-    for pattern in IGNORED_PATH_PATTERNS:
+    cfg = load_project_hygiene_config(project_root)
+    extra_ignored = cfg.get("extra_ignored_paths")
+    patterns = list(IGNORED_PATH_PATTERNS)
+    if isinstance(extra_ignored, list):
+        patterns.extend(str(x) for x in extra_ignored if isinstance(x, str) and x.strip())
+
+    for pattern in patterns:
         pat = pattern.lower()
         if pat.endswith("/**"):
             prefix = pat[:-3].rstrip("/")
@@ -232,16 +269,26 @@ def _strip_env_prefix(tokens: list[str]) -> list[str]:
     return tokens[idx:]
 
 
-def is_test_or_build_command(command: str) -> bool:
+def is_test_or_build_command(command: str, project_root: Path | None = None) -> bool:
     if not command or not command.strip():
         return False
-    # Split chained commands on &&, ||, ;, or newline
+
+    extra_cmds: list[tuple[str, ...]] = []
+    if project_root is not None:
+        cfg = load_project_hygiene_config(project_root)
+        raw_extra = cfg.get("extra_test_commands")
+        if isinstance(raw_extra, list):
+            for entry in raw_extra:
+                if isinstance(entry, str) and entry.strip():
+                    parts = [t.lower() for t in entry.strip().split()]
+                    parts[0] = parts[0].removeprefix("./")
+                    extra_cmds.append(tuple(parts))
+
     segments = re.split(r"&&|\|\||;|\n", command)
     for seg in segments:
         seg = seg.strip()
         if not seg:
             continue
-        # Handle simple pipe prefix before test runner if any
         sub_segs = [s.strip() for s in seg.split("|") if s.strip()]
         for sub in sub_segs:
             raw_tokens = [t.strip("\"'") for t in sub.split()]
@@ -249,10 +296,23 @@ def is_test_or_build_command(command: str) -> bool:
             if not tokens:
                 continue
             cmd_name = Path(tokens[0]).name.lower()
-            normalized = [cmd_name] + [t.lower() for t in tokens[1:]]
-            for prefix in TEST_COMMAND_PREFIXES:
-                if len(normalized) >= len(prefix) and tuple(normalized[: len(prefix)]) == prefix:
+            tail = [t.lower() for t in tokens[1:]]
+            normalized = [cmd_name] + tail
+            path_normalized = [tokens[0].lower().removeprefix("./")] + tail
+
+            for prefix in (*TEST_COMMAND_PREFIXES, *extra_cmds):
+                plen = len(prefix)
+                if (len(normalized) >= plen and tuple(normalized[:plen]) == prefix) or (
+                    len(path_normalized) >= plen and tuple(path_normalized[:plen]) == prefix
+                ):
                     return True
+
+            # Docker compose / docker run wrapping a test runner
+            if cmd_name in ("docker", "docker-compose") and any(
+                t in ("pytest", "test", "dotnet") for t in normalized[1:]
+            ) and ("exec" in normalized or "run" in normalized):
+                return True
+
             if "godot" in cmd_name and any("test" in t or "--headless" == t for t in normalized[1:]):
                 return True
             if "unity" in cmd_name and "-runtests" in normalized[1:]:

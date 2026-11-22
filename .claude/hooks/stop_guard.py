@@ -55,6 +55,9 @@ def main() -> None:
     turn_duration_s = 0
     should_count_time = False
 
+    proj_cfg = lh.load_project_hygiene_config(project_root)
+    tdd_gate_disabled = bool(proj_cfg.get("disable_tdd_gate", False))
+
     def _process_stop(state: dict) -> dict:
         nonlocal gate_decision, turn_duration_s, should_count_time
 
@@ -65,15 +68,21 @@ def main() -> None:
         # Smart TDD Gate:
         # Block only if production code was modified without running ANY test/build afterwards,
         # and respect stop_hook_active + STOP_RETRY_CAP (1).
-        if code_dirty and not tests_ran and not stop_hook_active and retry_count < lh.STOP_RETRY_CAP:
+        if (
+            not tdd_gate_disabled
+            and code_dirty
+            and not tests_ran
+            and not stop_hook_active
+            and retry_count < lh.STOP_RETRY_CAP
+        ):
             state["stop_retry_count"] = retry_count + 1
             gate_decision = {
                 "decision": "block",
                 "reason": (
                     "Production code was edited without running tests or build verification. "
-                    "Run the relevant test/build command (e.g., dotnet test, dotnet build, pytest) "
-                    "before concluding. (If you are intentionally at a TDD Red phase, run the test so "
-                    "the failure is observed.)"
+                    "Run the relevant test/build command (or configure .claude/hygiene.json if this "
+                    "repo has custom verification scripts) before concluding. "
+                    "(If you are intentionally at a TDD Red phase, run the test so the failure is observed.)"
                 ),
             }
             return state
@@ -124,33 +133,49 @@ def main() -> None:
         }
         lh.append_jsonl_locked(queue_path, entry)
 
-    # Accumulate work time & evaluate 40m project / 10h global triggers
+    # Accumulate work time & evaluate 40m project / 10h global triggers with retry cooldown
     if should_count_time and turn_duration_s > 0:
         proj_meta_path = proj_dir / "project_meta.json"
+        trigger_project_bg = False
 
         def _acc_proj(meta: dict) -> dict:
+            nonlocal trigger_project_bg
             meta["project_root"] = str(project_root)
-            meta["accumulated_s"] = int(meta.get("accumulated_s") or 0) + turn_duration_s
+            acc = int(meta.get("accumulated_s") or 0) + turn_duration_s
+            meta["accumulated_s"] = acc
+            last_try = float(meta.get("last_bg_attempt_ts") or 0.0)
+            if (
+                acc >= lh.PROJECT_HYGIENE_MINUTES * 60
+                and queue_path.exists()
+                and queue_path.stat().st_size > 0
+                and (now_ts - last_try) >= lh.BG_RETRY_COOLDOWN_SECONDS
+            ):
+                meta["last_bg_attempt_ts"] = now_ts
+                trigger_project_bg = True
             return meta
 
-        proj_meta = lh.locked_update_json(proj_meta_path, _acc_proj)
-
-        global_path = lh.global_counters_path()
-
-        def _acc_global(g: dict) -> dict:
-            g["accumulated_s"] = int(g.get("accumulated_s") or 0) + turn_duration_s
-            return g
-
-        global_meta = lh.locked_update_json(global_path, _acc_global)
-
-        if (
-            int(proj_meta.get("accumulated_s") or 0) >= lh.PROJECT_HYGIENE_MINUTES * 60
-            and queue_path.exists()
-            and queue_path.stat().st_size > 0
-        ):
+        lh.locked_update_json(proj_meta_path, _acc_proj)
+        if trigger_project_bg:
             spawn_bg_hygiene("project", project_root)
 
-        if int(global_meta.get("accumulated_s") or 0) >= lh.GLOBAL_CONSOLIDATION_HOURS * 3600:
+        global_path = lh.global_counters_path()
+        trigger_global_bg = False
+
+        def _acc_global(g: dict) -> dict:
+            nonlocal trigger_global_bg
+            acc = int(g.get("accumulated_s") or 0) + turn_duration_s
+            g["accumulated_s"] = acc
+            last_try = float(g.get("last_bg_attempt_ts") or 0.0)
+            if (
+                acc >= lh.GLOBAL_CONSOLIDATION_HOURS * 3600
+                and (now_ts - last_try) >= lh.BG_RETRY_COOLDOWN_SECONDS
+            ):
+                g["last_bg_attempt_ts"] = now_ts
+                trigger_global_bg = True
+            return g
+
+        lh.locked_update_json(global_path, _acc_global)
+        if trigger_global_bg:
             spawn_bg_hygiene("global", project_root)
 
     # Context Window 50% Alert via zero-token systemMessage

@@ -40,6 +40,7 @@ Using what `repo-recon` found (so you never ask obvious questions), ask ONE cris
 - Eliminate duplicates and generate **project-local** files inside `./.claude/` ONLY where the project adds real constraints not already covered globally:
   - Prefer path-scoped rules in `./.claude/rules/*.md` using YAML `paths:` frontmatter (e.g., `paths: ["src/**/*.cs"]`, `paths: ["**/*.razor"]`, `paths: ["tests/**"]`) so rules only load when relevant files are touched.
   - Create local `./.claude/skills/<name>/SKILL.md` only for recurring project-specific workflows (e.g., migrations, Docker compose dev workflow, custom engine export).
+  - If the repository uses custom verification commands not in the global hook defaults (e.g., `./scripts/verify.sh`, `tox`, `sqlfluff`), or is a pure non-code/docs repo, create `./.claude/hygiene.json` with `extra_test_commands`, `extra_ignored_paths`, or `disable_tdd_gate`.
 
 ### Step 4: Generate or Refine Project `./CLAUDE.md` (English)
 Keep `./CLAUDE.md` lean and high-signal — **do NOT include generic language advice or anything Claude can infer by reading one file**. Include only:

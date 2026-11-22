@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-TEMPLATE_ROOT = Path(__file__).resolve().parent.parent
+TEMPLATE_ROOT = Path(__file__).resolve().parent.parent / ".claude"
 HOOKS_DIR = TEMPLATE_ROOT / "hooks"
 
 sys.path.insert(0, str(HOOKS_DIR))
@@ -80,12 +80,28 @@ class HygieneHooksTest(unittest.TestCase):
         self.assertTrue(lh.is_ignored_path(str(self.project_dir / "README.md"), self.project_dir))
         self.assertTrue(lh.is_ignored_path(str(self.project_dir / ".claude" / "handoff.md"), self.project_dir))
         self.assertTrue(lh.is_ignored_path(str(self.project_dir / "docs" / "notes.txt"), self.project_dir))
+        self.assertTrue(lh.is_ignored_path(str(self.project_dir / "assets" / "logo.png"), self.project_dir))
         self.assertFalse(lh.is_ignored_path(str(self.project_dir / "src" / "OrderService.cs"), self.project_dir))
 
         self.assertTrue(lh.is_test_or_build_command("dotnet test --no-build"))
-        self.assertTrue(lh.is_test_or_build_command("cd api && pytest -q"))
+        self.assertTrue(lh.is_test_or_build_command("cd api && uv run pytest -q"))
+        self.assertTrue(lh.is_test_or_build_command("docker compose exec api pytest"))
+        self.assertTrue(lh.is_test_or_build_command("make test"))
+        self.assertTrue(lh.is_test_or_build_command("cargo test"))
         self.assertFalse(lh.is_test_or_build_command("git status"))
         self.assertFalse(lh.is_test_or_build_command('git commit -m "dotnet test"'))
+
+        # Per-project .claude/hygiene.json overrides
+        (self.project_dir / ".claude").mkdir(exist_ok=True)
+        (self.project_dir / ".claude" / "hygiene.json").write_text(
+            json.dumps({
+                "extra_test_commands": ["./scripts/verify.sh"],
+                "extra_ignored_paths": ["sql/seeds/**"],
+            }),
+            encoding="utf-8",
+        )
+        self.assertTrue(lh.is_test_or_build_command("./scripts/verify.sh --fast", self.project_dir))
+        self.assertTrue(lh.is_ignored_path(str(self.project_dir / "sql" / "seeds" / "init.sql"), self.project_dir))
 
     def test_smart_tdd_gate_blocks_dirty_code_then_allows_conscious_red_and_stop_hook_active(self) -> None:
         sid = "tdd-session"
@@ -236,6 +252,73 @@ class HygieneHooksTest(unittest.TestCase):
         self.assertIn("Use AsNoTracking on read queries", updated)
         self.assertIn("Keep manual rules untouched.", updated)
         self.assertEqual((proj_dir / "queue.jsonl").read_text(encoding="utf-8"), "")
+
+    def test_disable_tdd_gate_override_via_project_hygiene_json(self) -> None:
+        sid = "docs-repo-session"
+        (self.project_dir / ".claude").mkdir(exist_ok=True)
+        (self.project_dir / ".claude" / "hygiene.json").write_text(
+            json.dumps({"disable_tdd_gate": True}),
+            encoding="utf-8",
+        )
+        run_hook("prompt_submit.py", {"session_id": sid, "cwd": str(self.project_dir), "prompt": "Edit SQL script"}, self.claude_home)
+        run_hook(
+            "post_tool.py",
+            {"session_id": sid, "cwd": str(self.project_dir), "tool_name": "Write", "tool_input": {"file_path": str(self.project_dir / "init.sql")}},
+            self.claude_home,
+        )
+        res = run_hook("stop_guard.py", {"session_id": sid, "cwd": str(self.project_dir)}, self.claude_home)
+        self.assertEqual(res.stdout.strip(), "")
+
+    def test_bg_hygiene_in_real_git_repo_with_untracked_claude_dir(self) -> None:
+        os.environ["CLAUDE_HYGIENE_HOME"] = str(self.claude_home)
+        subprocess.run(["git", "init", str(self.project_dir)], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(self.project_dir), "config", "user.email", "test@example.com"], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(self.project_dir), "config", "user.name", "Test"], check=True, capture_output=True)
+
+        claude_md = self.project_dir / "CLAUDE.md"
+        claude_md.write_text(
+            "# Git Repo\n\n## Manual\n- Keep intact.\n\n"
+            "<!-- HYGIENE:AUTO -->\n- Old\n<!-- /HYGIENE:AUTO -->\n",
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "-C", str(self.project_dir), "add", "CLAUDE.md"], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(self.project_dir), "commit", "-m", "init"], check=True, capture_output=True)
+
+        proj_dir = lh.project_state_dir(self.project_dir.resolve())
+        lh.append_jsonl_locked(
+            proj_dir / "queue.jsonl",
+            {
+                "ts": "2026-11-21T08:00:00Z",
+                "trigger": "multi_file_edit",
+                "duration_s": 190,
+                "intent": "Update docs",
+                "files": ["CLAUDE.md"],
+                "errors": [],
+                "tests": "pass (pytest)",
+                "outcome_tail": "Done",
+            },
+        )
+
+        # Mock CLI edits CLAUDE.md inside markers AND .claude/hygiene-report.md (initially untracked .claude/)
+        good_git_cli = self.root / "mock_git_good.py"
+        good_git_cli.write_text(
+            "#!/usr/bin/env python3\n"
+            "import pathlib\n"
+            "p = pathlib.Path('CLAUDE.md')\n"
+            "p.write_text(p.read_text().replace('- Old', '- Verified pytest command'))\n"
+            "r = pathlib.Path('.claude/hygiene-report.md')\n"
+            "r.write_text('# Hygiene Report\\n\\n- All clean.\\n')\n",
+            encoding="utf-8",
+        )
+        good_git_cli.chmod(0o755)
+        os.environ["CLAUDE_HYGIENE_CLI"] = str(good_git_cli)
+        try:
+            status = bg_hygiene.run_project_hygiene(self.project_dir.resolve())
+        finally:
+            os.environ.pop("CLAUDE_HYGIENE_CLI", None)
+
+        self.assertEqual(status, "applied")
+        self.assertIn("Verified pytest command", claude_md.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

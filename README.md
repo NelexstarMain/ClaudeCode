@@ -4,14 +4,20 @@ Gotowy, spersonalizowany szablon dla **Linux VM** oparty o czysty **Python 3 (st
 
 ## Instalacja w maszynie wirtualnej (Linux)
 
+Wszystkie globalne pliki konfiguracyjne znajdują się bezpośrednio w katalogu **`.claude/`**. Możesz zainstalować je automatycznie z kopią zapasową przez `./install.sh`:
+
 ```bash
-git clone https://github.com/NelexstarMain/ClaudeCode.git
-cd ClaudeCode
 chmod +x install.sh
 ./install.sh
 ```
 
-Skrypt najpierw uruchamia wszystkie testy jednostkowe (`tests/test_hooks.py`), tworzy kopię zapasową istniejących plików (`~/.claude/backups/...`), kopiuje konfigurację do `~/.claude/` i nadaje prawa wykonywalności skryptom hooków.
+Alternatywnie możesz skopiować lub podlinkować sam katalog `.claude` bezpośrednio jako `~/.claude`:
+
+```bash
+cp -r .claude ~/.claude && chmod +x ~/.claude/hooks/*.py
+```
+
+Skrypt `install.sh` najpierw uruchamia wszystkie testy jednostkowe (`tests/test_hooks.py`), tworzy kopię zapasową istniejących plików (`~/.claude/backups/...`), kopiuje zawartość `.claude/` do `~/.claude/` i nadaje prawa wykonywalności skryptom hooków.
 
 ## Użycie na co dzień
 
@@ -24,6 +30,18 @@ Skrypt najpierw uruchamia wszystkie testy jednostkowe (`tests/test_hooks.py`), t
 4. **Automaty w tle (Haiku `Restricted Edit`):**
    - co **40 min** skumulowanej pracy w projekcie Haiku porządkuje sekcję `<!-- HYGIENE:AUTO -->` w `CLAUDE.md` i dopisuje obserwacje do `.claude/hygiene-report.md` (zero `Bash`, zero `Write`, tryb `dontAsk`, limit `$0.20`, pełny rollback przy naruszeniu granic),
    - co **10 h** łącznej pracy konsoliduje globalny `~/.claude/preferences.md` (twardy limit **70 linii**).
+
+## Nadpisania per-projekt (`.claude/hygiene.json`)
+
+Dla repozytoriów niestandardowych (np. własne skrypty weryfikacji, SQL/Terraform, repozytorium czysto dokumentacyjne) `/core-kickoff` lub użytkownik może dodać opcjonalny plik `./.claude/hygiene.json`:
+
+```json
+{
+  "extra_test_commands": ["./scripts/verify.sh", "tox"],
+  "extra_ignored_paths": ["sql/seeds/**", "*.drawio"],
+  "disable_tdd_gate": false
+}
+```
 
 ## Testowanie
 

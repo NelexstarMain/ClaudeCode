@@ -72,7 +72,7 @@ def main() -> None:
 
         elif tool_name == "Bash":
             cmd = str(tool_input.get("command") or "")
-            if lh.is_test_or_build_command(cmd):
+            if lh.is_test_or_build_command(cmd, project_root):
                 state["last_test_cmd"] = cmd[:120]
                 state["tests_ran_since_dirty"] = True
                 if is_failure:
