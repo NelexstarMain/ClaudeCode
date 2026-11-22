@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="100%" height="100%">
+  <defs>
+    <linearGradient id="pipe-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f1d"/>
+      <stop offset="100%" stop-color="#030712"/>
+    </linearGradient>
+    <linearGradient id="card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="25%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="75%" stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Container Base -->
+  <rect width="1200" height="380" rx="14" fill="url(#pipe-bg)"/>
+  <rect x="0.5" y="0.5" width="1199" height="379" rx="13.5" fill="none" stroke="#334155" stroke-opacity="0.5"/>
+
+  <!-- Title Section -->
+  <text x="40" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700" fill="#f8fafc">
+    Architektura i Cykl Życia Sesji Claude Code
+  </text>
+  <text x="40" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="400" fill="#94a3b8">
+    Precyzyjna pętla kontroli jakości od startu zadania po bezstratne przekazanie kontekstu i automaty w tle
+  </text>
+
+  <!-- Flow Connector Lines -->
+  <path d="M 140 185 L 340 185 L 570 185 L 810 185 L 1050 185" fill="none" stroke="url(#line-grad)" stroke-width="3" stroke-dasharray="6 4" stroke-opacity="0.6"/>
+
+  <!-- Card 1: Kickoff -->
+  <g transform="translate(40, 95)" filter="url(#card-shadow)">
+    <rect width="200" height="235" rx="12" fill="url(#card-grad)" stroke="#38bdf8" stroke-width="1.5"/>
+    <rect x="16" y="16" width="32" height="32" rx="8" fill="#0369a1" fill-opacity="0.4"/>
+    <text x="25" y="38" font-family="ui-monospace, monospace" font-size="16" font-weight="700" fill="#38bdf8">01</text>
+    <text x="58" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700" fill="#f1f5f9">Kickoff</text>
+    <text x="16" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#38bdf8">/core-kickoff</text>
+    <text x="16" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#94a3b8">
+      <tspan x="16" dy="0">• Rekonesans Haiku (repo-recon)</tspan>
+      <tspan x="16" dy="18">• Wywiad adaptacyjny (PL)</tspan>
+      <tspan x="16" dy="18">• Generowanie lean CLAUDE.md</tspan>
+      <tspan x="16" dy="18">• Weryfikacja runnera testów</tspan>
+      <tspan x="16" dy="18">• Zerowa edycja bazy globalnej</tspan>
+    </text>
+    <rect x="16" y="195" width="168" height="24" rx="6" fill="#0c4a6e" fill-opacity="0.5"/>
+    <text x="24" y="211" font-family="ui-monospace, monospace" font-size="10.5" fill="#7dd3fc">SessionStart auto-hook</text>
+  </g>
+
+  <!-- Card 2: TDD Cycle -->
+  <g transform="translate(270, 95)" filter="url(#card-shadow)">
+    <rect width="205" height="235" rx="12" fill="url(#card-grad)" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="16" y="16" width="32" height="32" rx="8" fill="#047857" fill-opacity="0.4"/>
+    <text x="24" y="38" font-family="ui-monospace, monospace" font-size="16" font-weight="700" fill="#10b981">02</text>
+    <text x="58" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700" fill="#f1f5f9">Pętla TDD</text>
+    <text x="16" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#10b981">PostToolUse Hook</text>
+    <text x="16" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#94a3b8">
+      <tspan x="16" dy="0">• Faza Red-First dla logiki/bugów</tspan>
+      <tspan x="16" dy="18">• Śledzenie dotkniętych plików</tspan>
+      <tspan x="16" dy="18">• Flaga dirty_code per sesja</tspan>
+      <tspan x="16" dy="18">• Ignorowanie *.md i .claude/**</tspan>
+      <tspan x="16" dy="18">• Detekcja pytest, dotnet, cargo</tspan>
+    </text>
+    <rect x="16" y="195" width="173" height="24" rx="6" fill="#064e3b" fill-opacity="0.5"/>
+    <text x="24" y="211" font-family="ui-monospace, monospace" font-size="10.5" fill="#6ee7b7">Zero nieodpalonych testów</text>
+  </g>
+
+  <!-- Card 3: Stop Gate -->
+  <g transform="translate(505, 95)" filter="url(#card-shadow)">
+    <rect width="205" height="235" rx="12" fill="url(#card-grad)" stroke="#f59e0b" stroke-width="1.5"/>
+    <rect x="16" y="16" width="32" height="32" rx="8" fill="#b45309" fill-opacity="0.4"/>
+    <text x="24" y="38" font-family="ui-monospace, monospace" font-size="16" font-weight="700" fill="#f59e0b">03</text>
+    <text x="58" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700" fill="#f1f5f9">Stop Guard</text>
+    <text x="16" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#f59e0b">stop_guard.py</text>
+    <text x="16" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#94a3b8">
+      <tspan x="16" dy="0">• Blokada finiszu przy dirty code</tspan>
+      <tspan x="16" dy="18">• Przepuszcza świadome Red</tspan>
+      <tspan x="16" dy="18">• Limit retry: max 1 próba</tspan>
+      <tspan x="16" dy="18">• Key-Moment Funnel (0 tokenów)</tspan>
+      <tspan x="16" dy="18">• Nadpisanie: hygiene.json</tspan>
+    </text>
+    <rect x="16" y="195" width="173" height="24" rx="6" fill="#78350f" fill-opacity="0.5"/>
+    <text x="24" y="211" font-family="ui-monospace, monospace" font-size="10.5" fill="#fcd34d">Wymusza dowód z testu</text>
+  </g>
+
+  <!-- Card 4: Wrapup & Context -->
+  <g transform="translate(740, 95)" filter="url(#card-shadow)">
+    <rect width="205" height="235" rx="12" fill="url(#card-grad)" stroke="#ec4899" stroke-width="1.5"/>
+    <rect x="16" y="16" width="32" height="32" rx="8" fill="#be185d" fill-opacity="0.4"/>
+    <text x="24" y="38" font-family="ui-monospace, monospace" font-size="16" font-weight="700" fill="#ec4899">04</text>
+    <text x="58" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700" fill="#f1f5f9">Handoff</text>
+    <text x="16" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#ec4899">/core-wrapup</text>
+    <text x="16" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#94a3b8">
+      <tspan x="16" dy="0">• Monitor 30% (żółty) / 50% (czerw.)</tspan>
+      <tspan x="16" dy="18">• Zero-token systemMessage alert</tspan>
+      <tspan x="16" dy="18">• Zapis .claude/handoff.md (~1.5k)</tspan>
+      <tspan x="16" dy="18">• Komenda /clear resetuje okno</tspan>
+      <tspan x="16" dy="18">• Bezstratna kontynuacja pracy</tspan>
+    </text>
+    <rect x="16" y="195" width="173" height="24" rx="6" fill="#831843" fill-opacity="0.5"/>
+    <text x="24" y="211" font-family="ui-monospace, monospace" font-size="10.5" fill="#fbcfe8">Koniec degradacji modelu</text>
+  </g>
+
+  <!-- Card 5: Background Haiku -->
+  <g transform="translate(975, 95)" filter="url(#card-shadow)">
+    <rect width="185" height="235" rx="12" fill="url(#card-grad)" stroke="#a855f7" stroke-width="1.5"/>
+    <rect x="16" y="16" width="32" height="32" rx="8" fill="#7e22ce" fill-opacity="0.4"/>
+    <text x="24" y="38" font-family="ui-monospace, monospace" font-size="16" font-weight="700" fill="#a855f7">05</text>
+    <text x="58" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700" fill="#f1f5f9">Tło (Haiku)</text>
+    <text x="16" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#a855f7">bg_hygiene.py</text>
+    <text x="16" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#94a3b8">
+      <tspan x="16" dy="0">• Co 40 min: porządki CLAUDE.md</tspan>
+      <tspan x="16" dy="18">• Co 10 h: sync preferences.md</tspan>
+      <tspan x="16" dy="18">• Restricted Edit (zero Bash/Write)</tspan>
+      <tspan x="16" dy="18">• Budżet max $0.20 na zadanie</tspan>
+      <tspan x="16" dy="18">• Auto-rollback przy naruszeniu</tspan>
+    </text>
+    <rect x="16" y="195" width="153" height="24" rx="6" fill="#581c87" fill-opacity="0.5"/>
+    <text x="24" y="211" font-family="ui-monospace, monospace" font-size="10.5" fill="#e9d5ff">Dyskretny asystent</text>
+  </g>
+</svg>
